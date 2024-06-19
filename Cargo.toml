@@ -1,0 +1,10 @@
+[package]
+name = "cl_aggr_args_mac"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cranelift = "0.108"
+cranelift-module = "0.108"
+cranelift-jit = "0.108"
+cranelift-native = "0.108"
