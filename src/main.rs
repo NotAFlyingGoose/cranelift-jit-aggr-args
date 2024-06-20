@@ -2,7 +2,7 @@ use std::mem::{self, align_of, size_of};
 
 use cranelift::{
     codegen::{
-        ir::{types, ArgumentPurpose, MemFlags, StackSlotData, StackSlotKind, Value},
+        ir::{types, ArgumentPurpose, MemFlags, StackSlotData, StackSlotKind, UserFuncName, Value},
         Context,
     },
     prelude::{
@@ -68,6 +68,7 @@ fn create_main(
         .unwrap();
 
     ctx.func.signature = main_sig;
+    ctx.func.name = UserFuncName::testcase("main");
 
     // Create the builder to build a function.
     let mut builder = FunctionBuilder::new(&mut ctx.func, builder_ctx);
@@ -86,7 +87,7 @@ fn create_main(
     builder.seal_all_blocks();
     builder.finalize();
 
-    println!("main\n{}", ctx.func);
+    println!("{}", ctx.func);
 
     module
         .define_function(main_id, ctx)
@@ -163,6 +164,7 @@ fn create_foo(
         .unwrap();
 
     ctx.func.signature = foo_sig;
+    ctx.func.name = UserFuncName::testcase("foo");
 
     // Create the builder to build a function.
     let mut builder = FunctionBuilder::new(&mut ctx.func, builder_ctx);
@@ -185,7 +187,7 @@ fn create_foo(
     builder.seal_all_blocks();
     builder.finalize();
 
-    println!("foo\n{}", ctx.func);
+    println!("\n{}", ctx.func);
 
     module
         .define_function(foo_id, ctx)
