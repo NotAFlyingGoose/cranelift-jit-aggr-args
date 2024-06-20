@@ -46,7 +46,8 @@ fn main() {
 
     let value = main();
 
-    println!("{value}");
+    println!("The program worked! Good job!");
+    println!("output = {value}");
 }
 
 fn create_main(
@@ -109,48 +110,23 @@ fn generate_main_body(module: &mut JITModule, builder: &mut FunctionBuilder, foo
     assert_eq!(struct_align, align_of::<i32>() as u32);
 
     let struct_val = {
-        // i included this to make it more like how Capy is actually doing things,
-        // but it could probably be removed for an even more minimal reproducable example
-        let addr = create_stack_slot_rustc(builder, ptr_ty, struct_size, struct_align);
+        let stack_slot = builder.create_sized_stack_slot(StackSlotData {
+            kind: StackSlotKind::ExplicitSlot,
+            size: struct_size,
+            align_shift: struct_align as u8,
+        });
 
         let member_val = builder.ins().iconst(types::I32, 42);
-        builder
-            .ins()
-            .store(MemFlags::trusted(), member_val, addr, 0);
 
-        addr
+        builder.ins().stack_store(member_val, stack_slot, 0);
+
+        builder.ins().stack_addr(ptr_ty, stack_slot, 0)
     };
 
     let call = builder.ins().call(foo, &[struct_val]);
     let result = builder.inst_results(call)[0];
 
     result
-}
-
-// this copies rustc (https://github.com/rust-lang/rust/blob/11380368dc53d0b2fc3a627408818eff1973ce9a/compiler/rustc_codegen_cranelift/src/common.rs#L390)
-fn create_stack_slot_rustc(
-    builder: &mut FunctionBuilder,
-    ptr_ty: types::Type,
-    size: u32,
-    align: u32,
-) -> Value {
-    let abi_align = 16;
-    if align <= abi_align {
-        let stack_slot = builder.create_sized_stack_slot(StackSlotData {
-            kind: StackSlotKind::ExplicitSlot,
-            size: (size + abi_align - 1) / abi_align * abi_align,
-        });
-        builder.ins().stack_addr(ptr_ty, stack_slot, 0)
-    } else {
-        let stack_slot = builder.create_sized_stack_slot(StackSlotData {
-            kind: StackSlotKind::ExplicitSlot,
-            size: (size + align) / abi_align * abi_align,
-        });
-        let base_ptr = builder.ins().stack_addr(ptr_ty, stack_slot, 0);
-        let misalign_offset = builder.ins().urem_imm(base_ptr, align as i64);
-        let realign_offset = builder.ins().irsub_imm(misalign_offset, align as i64);
-        builder.ins().iadd(base_ptr, realign_offset)
-    }
 }
 
 fn create_foo(
